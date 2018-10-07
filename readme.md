@@ -8,7 +8,7 @@ schematic circuit diagram.
 This has been implemeted on a custom FPGA board called the Pipistrello based on
 a Spartan LX45 and designed by Saanlima.com (discontinued) but it should work
 on any FPGA able to fit the design and all the game ROMs. Game controller
-options are PS2 Keyboard or a Nintendo Gamecube Controller Video output can be
+options are PS2 Keyboard or a Nintendo Gamecube Controller. Video output can be
 via analog VGA and/or digital DVID directly to your monitor.
 
 ## Known Errors: ##
@@ -69,6 +69,7 @@ can be viewed with a suitable graphics viewer.
 OBJ_GEN, OBJ_LINE_BUF`
 2. in `SCR_GEN.vhd` comment out the `RAM_A9` block.
 
+The following picture will appear in the `screens` folder:
 [![Background screen shot](doc/1_SCR.gif)](doc/1_SCR.gif)
 
 ### To debug the text (CHR) ###
@@ -76,17 +77,18 @@ OBJ_GEN, OBJ_LINE_BUF`
 OBJ_GEN, OBJ_LINE_BUF`
 2. in `CHR_GEN.vhd` comment out the `RAM_D2` block.
 
-[![Character screen shot](doc/0_CHR)](doc/0_CHR)
+The following picture will appear in the `screens` folder:
+[![Character screen shot](doc/0_CHR.gif)](doc/0_CHR.gif)
 
 ### To debug the sprites (OBJ) ###
 1. in `FPGA_1942.vhd` comment out the modules `CPUA_IO, CPUB_PSG, CHAR_GEN,
 SCR_GEN`
 2. in `OBJ_GEN.vhd` comment out the `RAM_H9_H10` block.
 
+The following picture will appear in the `screens` folder:
 [![Object screen shot](doc/2_OBJ.gif)](doc/2_OBJ.gif)
 
-If all three modules are left in, then the composite piture looks like this:
-
+If all three modules are left in, then the composite picture looks like this:
 [![Game screen shot](doc/3_CHR_SCR_OBJ.gif)](doc/3_CHR_SCR_OBJ.gif)
 
 The purpose of commeting out the RAM blocks is because during simulation an
