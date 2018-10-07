@@ -56,7 +56,7 @@ generators) page 3 and 4 of `84100-01A`
 `84100-02A`
 
 ## Debugging ##
-Each section can be easily debugged in the simulator by commenting out
+Each video section can be easily debugged in the simulator by commenting out
 unneccessary modules.
 
 After making the relevant changes as below run the top level testbench in the
@@ -70,6 +70,7 @@ OBJ_GEN, OBJ_LINE_BUF`
 2. in `SCR_GEN.vhd` comment out the `RAM_A9` block.
 
 The following picture will appear in the `screens` folder:
+
 [![Background screen shot](doc/1_SCR.gif)](doc/1_SCR.gif)
 
 ### To debug the text (CHR) ###
@@ -78,6 +79,7 @@ OBJ_GEN, OBJ_LINE_BUF`
 2. in `CHR_GEN.vhd` comment out the `RAM_D2` block.
 
 The following picture will appear in the `screens` folder:
+
 [![Character screen shot](doc/0_CHR.gif)](doc/0_CHR.gif)
 
 ### To debug the sprites (OBJ) ###
@@ -86,12 +88,14 @@ SCR_GEN`
 2. in `OBJ_GEN.vhd` comment out the `RAM_H9_H10` block.
 
 The following picture will appear in the `screens` folder:
+
 [![Object screen shot](doc/2_OBJ.gif)](doc/2_OBJ.gif)
 
 If all three modules are left in, then the composite picture looks like this:
+
 [![Game screen shot](doc/3_CHR_SCR_OBJ.gif)](doc/3_CHR_SCR_OBJ.gif)
 
-The purpose of commeting out the RAM blocks is because during simulation an
+The purpose of commenting out the RAM blocks is because during simulation an
 equivalent debug ROM block is activated. ROM_A9, ROM_D2 and ROM_H9_H10 have been
 prepared with suitable contents to simulate what the respective RAMs would have
 been loaded with by the CPU had we not commented it out. This way we only have
