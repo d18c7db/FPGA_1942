@@ -14,19 +14,16 @@ library unisim;
 
 entity dvid is
 port (
-	clk_p     : in  STD_LOGIC;
-	clk_n     : in  STD_LOGIC;
-	clk_pixel : in  STD_LOGIC;
-	red_p     : in  STD_LOGIC_VECTOR (7 downto 0);
-	green_p   : in  STD_LOGIC_VECTOR (7 downto 0);
-	blue_p    : in  STD_LOGIC_VECTOR (7 downto 0);
-	blank     : in  STD_LOGIC;
-	hsync     : in  STD_LOGIC;
-	vsync     : in  STD_LOGIC;
-	red_s     : out STD_LOGIC;
-	green_s   : out STD_LOGIC;
-	blue_s    : out STD_LOGIC;
-	clock_s   : out STD_LOGIC
+	clk			: in	std_logic;
+	clk_pixel	: in	std_logic;
+	red_p			: in	std_logic_vector (7 downto 0);
+	green_p		: in	std_logic_vector (7 downto 0);
+	blue_p		: in	std_logic_vector (7 downto 0);
+	blank			: in	std_logic;
+	hsync			: in	std_logic;
+	vsync			: in	std_logic;
+	tmds_p		: out	std_logic_vector (3 downto 0);
+	tmds_n		: out	std_logic_vector (3 downto 0)
 );
 end dvid;
 
@@ -35,13 +32,31 @@ architecture Behavioral of dvid is
 	signal latched_red, latched_green, latched_blue : std_logic_vector(9 downto 0) := (others => '0');
 	signal shift_red,   shift_green,   shift_blue   : std_logic_vector(9 downto 0) := (others => '0');
 
-	signal shift_clock   : std_logic_vector(9 downto 0) := "0000011111";
+	signal shift_clock	: std_logic_vector(9 downto 0) := "0000011111";
 
-	constant c_red       : std_logic_vector(1 downto 0) := (others => '0');
-	constant c_green     : std_logic_vector(1 downto 0) := (others => '0');
-	signal   c_blue      : std_logic_vector(1 downto 0);
+	constant c_red			: std_logic_vector(1 downto 0) := (others => '0');
+	constant c_green		: std_logic_vector(1 downto 0) := (others => '0');
+	signal   c_blue		: std_logic_vector(1 downto 0);
+	signal clk_s, red_s, grn_s, blu_s, clk_p, clk_n :std_logic;
 
-begin   
+begin
+	inst_dcm : DCM_SP
+	generic map (
+		CLKFX_MULTIPLY => 12,
+		CLKFX_DIVIDE   => 5,
+		CLKIN_PERIOD   => 20.0
+	)
+	port map (
+		CLKIN    => clk,
+		CLKFX    => clk_p,
+		CLKFX180 => clk_n
+	);
+
+	OBUFDS_clk : OBUFDS port map ( O => tmds_p(3), OB => tmds_n(3), I => clk_s );
+	OBUFDS_grn : OBUFDS port map ( O => tmds_p(2), OB => tmds_n(2), I => red_s );
+	OBUFDS_red : OBUFDS port map ( O => tmds_p(1), OB => tmds_n(1), I => grn_s );
+	OBUFDS_blu : OBUFDS port map ( O => tmds_p(0), OB => tmds_n(0), I => blu_s );
+
 	c_blue <= vsync & hsync;
 
 	TMDS_encoder_red:   entity work.TMDS_encoder PORT MAP(clk => clk_pixel, data => red_p,   c => c_red,   blank => blank, encoded => encoded_red);
@@ -52,13 +67,13 @@ begin
 		port map (Q => red_s,   D0 => shift_red(0),   D1 => shift_red(1),   C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
 
 	ODDR2_green : ODDR2 generic map( DDR_ALIGNMENT => "C0", INIT => '0', SRTYPE => "ASYNC") 
-		port map (Q => green_s, D0 => shift_green(0), D1 => shift_green(1), C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
+		port map (Q => grn_s, D0 => shift_green(0), D1 => shift_green(1), C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
 
 	ODDR2_blue  : ODDR2 generic map( DDR_ALIGNMENT => "C0", INIT => '0', SRTYPE => "ASYNC") 
-		port map (Q => blue_s,  D0 => shift_blue(0),  D1 => shift_blue(1),  C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
+		port map (Q => blu_s,  D0 => shift_blue(0),  D1 => shift_blue(1),  C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
 
 	ODDR2_clock : ODDR2 generic map( DDR_ALIGNMENT => "C0", INIT => '0', SRTYPE => "ASYNC") 
-		port map (Q => clock_s, D0 => shift_clock(0), D1 => shift_clock(1), C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
+		port map (Q => clk_s, D0 => shift_clock(0), D1 => shift_clock(1), C0 => clk_p, C1 => clk_n, CE => '1', R => '0', S => '0');
 
 	process
 	begin

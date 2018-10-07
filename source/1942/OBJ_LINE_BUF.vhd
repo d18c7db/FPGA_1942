@@ -72,9 +72,11 @@ architecture RTL of OBJ_LINE_BUF is
 		dummy1,
 		dummy2,
 		F2_ram_data_bus,
-		J4_ram_data_bus,
-		M11_prom_data_bus
+		J4_ram_data_bus
 								: std_logic_vector( 3 downto 0) := (others => '1');
+	signal
+		M11_prom_data_bus
+								: std_logic_vector( 1 downto 0) := (others => '1');
 	signal
 		F2_ram_addr_bus,
 		J4_ram_addr_bus
@@ -92,12 +94,21 @@ begin
 	-- ############################
 
 	-- M11 PROM
-	PROM_M11 : entity work.PROM_M11
-	port map (
-		CLK					=> I_CLK_12M,
-		ADDR					=> I_V(7 downto 0),
-		DATA					=> M11_prom_data_bus
-	);
+--	PROM_M11 : entity work.PROM_M11
+--	port map (
+--		CLK					=> I_CLK_12M,
+--		ADDR					=> I_V(7 downto 0),
+--		DATA					=> M11_prom_data_bus
+--	);
+
+	-- these equations replace the M11 PROM
+	M11_prom_data_bus(1) <=
+		not (I_V(7) or  I_V(6) or  I_V(5) or  I_V(4) ) or
+		    (I_V(7) and I_V(6) and I_V(5) and I_V(4));
+
+	M11_prom_data_bus(0) <=
+		not ( I_V(7) or  I_V(6) or  I_V(5) or   I_V(4) or (I_V(3) and I_V(2) and I_V(1) and I_V(0))) or
+		    ( I_V(7) and I_V(6) and I_V(5) and (I_V(4) or (I_V(3) and I_V(2) and I_V(1) and I_V(0))) );
 
 	s_SEATMn <= M11_prom_data_bus(0);
 

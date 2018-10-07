@@ -47,7 +47,11 @@ architecture RTL of SYNC is
 		s_H
 								: std_logic_vector(8 downto 0) := (others => '1');
 	signal
+		s_X6M
+								: std_logic := '0';
+	signal
 		s_L6M,
+		s_K3_8,
 		s_K5_6,
 		s_K5_9,
 		s_K8_5,
@@ -57,7 +61,6 @@ architecture RTL of SYNC is
 		s_K7_5,
 		s_K7_8,
 		s_K7_8_last,
-		s_K3_8,
 		s_H7_12
 								: std_logic := '1';
 begin
@@ -65,13 +68,17 @@ begin
 	-- we want short duration clock enables so we gate with 6MHz
 	O_PHI_B	<= not ( s_H(0) or s_L6M );
 
+-- FIXME we tap OH earlier to account for the delay introduced by detecting OH edge via OH_last
+-- Without this fix, a glitch is created halfway in s_2CLn, s_1CLn, causing the sprite at
+--	position 0 (the player sprite - airplane) to have its Y position constantly zeroed so it
+-- always appears at bottom of screen instead of being able to be moved around
+--	O_OH		<= s_K7_8;
+	O_OH		<= not s_K7_5;
+
 	O_V		<= s_V;
 	O_H		<= s_H;
---	O_LVBL	<= vdelay(1); -- 1
---	O_LHBL	<= hdelay(2); -- 2
 	O_LVBL	<= s_K5_9;
 	O_LHBL	<= s_J8_6;
-	O_OH		<= s_K7_8;
 	O_4_3H	<= s_K8_5;
 	O_4H		<= s_K8_9;
 	O_6M		<= ( not s_L6M );
@@ -91,7 +98,8 @@ begin
 	J7a : process
 	begin
 		wait until rising_edge(I_CLK_12M);
-		s_L6M <= not s_L6M;
+		s_L6M <=     s_X6M;
+		s_X6M <= not s_X6M;
 	end process;
 
 	-- Half of J7 F/F output 9, together with H3 and J3 counters form a 9 bit horizontal counter clocked at 6Mhz
@@ -105,7 +113,7 @@ begin
 	h_v_count : process
 	begin
 		wait until rising_edge(I_CLK_12M);
-		if s_L6M = '1' then		-- inverted X6M
+		if s_X6M = '0' then
 			if s_H = "111111111" then
 				s_H <= "010000000";
 				-- vclk
@@ -120,39 +128,25 @@ begin
 		end if;
 	end process;
 
-	-- K7 F/F output 5
-	K7_5 : process
+	K7_K8_a : process
 	begin
 		wait until rising_edge(I_CLK_12M);
 		if s_L6M = '0' then
+			-- K7 F/F output 5
 			s_K7_5 <= s_H7_8;
+			-- K8 F/F output 5
+			s_K8_5 <= s_H(0) and s_H(1);	-- generates 4-3H
 		end if;
 	end process;
 
-	-- K7 F/F output 8
-	K7_8 : process
+	K7_K8_b : process
 	begin
 		wait until rising_edge(I_CLK_12M);
-		if s_L6M = '1' then -- inverted X6M
+		if s_X6M = '0' then
+			-- K7 F/F output 8
 			s_K7_8 <= not s_K7_5; -- generates OH
-		end if;
-	end process;
-
-	-- K8 F/F output 5
-	K8_5 : process
-	begin
-		wait until rising_edge(I_CLK_12M);
-		if s_L6M = '0' then
-			s_K8_5 <= s_H(0) and s_H(1);	-- 4-3H
-		end if;
-	end process;
-
-	-- K8 F/F output 9
-	K8_9 : process
-	begin
-		wait until rising_edge(I_CLK_12M);
-		if s_L6M = '1' then -- inverted X6M
-			s_K8_9 <= s_K8_5 and ( not s_H(2) );	-- 4H
+			-- K8 F/F output 9
+			s_K8_9 <= s_K8_5 and ( not s_H(2) );	-- generates 4H
 		end if;
 	end process;
 
@@ -164,28 +158,23 @@ begin
 	s_J8_JK(1) <= ( not s_H7_8 ) and ( not s_H(8) ); -- J
 	s_J8_JK(0) <= ( not s_H7_8 ) and       s_H(8)  ; -- K
 
-	-- J8 J/K FF output 6
-	-- J K Q /Q
-	-- 0 0 hold
-	-- 0 1 0 1
-	-- 1 0 1 0
-	-- 1 1 toggle (unstable)
+	-- inputs are transfered to the outputs on negative edge of clock
 	J8_6 : process
 	begin
 		wait until rising_edge(I_CLK_12M);
-		if s_L6M = '0' then
+		if s_L6M = '1' then
 			case s_J8_JK is
-				when "10" => s_J8_6 <= '0';	-- LHBL
+				when "10" => s_J8_6 <= '0';	-- generates LHBL
 				when "01" => s_J8_6 <= '1';
 				when others => null;
 			end case;
 		end if;
 	end process;
 
-	-- K3 AND gate output 8
+	-- K3 gate output 8
 	s_K3_8	<= not ( s_V(8) and       s_V(7)  and s_V(6) and s_V(5) and s_V(4) );
 
-	-- H7 AND gate output 12
+	-- H7 gate output 12
 	s_H7_12	<= not ( s_V(8) and ( not s_V(7) )                      and s_V(4) );
 
 	-- K5 F/F output 6
@@ -205,7 +194,7 @@ begin
 		wait until rising_edge(I_CLK_12M);
 		s_K7_8_last <= s_K7_8;
 		if s_K7_8 = '1' and s_K7_8_last='0' then
-			s_K5_9 <= s_K5_6;	-- LVBL
+			s_K5_9 <= s_K5_6;	-- generates LVBL
 		end if;
 	end process;
 

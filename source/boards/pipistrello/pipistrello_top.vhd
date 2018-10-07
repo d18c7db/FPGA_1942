@@ -39,8 +39,8 @@ entity PIPISTRELLO_TOP is
 		O_VSYNC				: out   std_logic;
 
 		-- HDMI monitor output
---		TMDS_P,
---		TMDS_N				: out   std_logic_vector(3 downto 0);
+		TMDS_P,
+		TMDS_N				: out   std_logic_vector(3 downto 0);
 
 		-- Sound out
 		O_AUDIO_L,
@@ -316,26 +316,27 @@ begin
 	-----------------------------------------------------------------
 	-- video scan converter required to display video on VGA hardware
 	-----------------------------------------------------------------
-	-- game native resolution 224x256
+	-- game native resolution 256x224 visible area or 384x262 total pixel area
 	-- take note: the values below are relative to the CLK period not standard VGA clock period
 	ScanConv : entity work.VGA_SCANCONV
 	generic map (
-		-- mark active area of input video
-		cstart      =>   1,  -- composite sync start
-		clength     => 256,  -- composite sync length
+		-- mark start of active area of input video
+		vstart      =>  127,  -- start  of active video
+		vlength     =>  256,  -- length of active video
 
-		-- output video timing
-		hA				=>  16,	-- h front porch
-		hB				=>  46,	-- h sync
-		hC				=>  16,	-- h back porch
-		hD				=> 256,	-- visible video
+		-- parameters below affect output video timing
+		-- these must add up to 384 (including hpad*2)
+		hF				=>   8,	-- h front porch
+		hS				=>  45,	-- h sync
+		hB				=>  23,	-- h back porch
+		hV				=> 260,	-- visible video
+		hpad			=>  24,	-- create H black border
 
---		vA				=>   8,	-- v front porch (not used)
-		vB				=>   2,	-- v sync
-		vC				=>  36,	-- v back porch
-		vD				=> 224,	-- visible video
-
-		hpad			=>  25,	-- create H black border
+		-- these should add up to 262 (including vpad*2)
+		vF				=>   2,	-- v front porch
+		vS				=>   2,	-- v sync
+		vB				=>  32,	-- v back porch
+		vV				=> 226,	-- visible video
 		vpad			=>   0	-- create V black border
 	)
 	port map (
@@ -358,45 +359,25 @@ begin
 		CLK_x2					=> clk_12M
 	);
 
---	OBUFDS_clk : OBUFDS port map ( O => TMDS_P(3), OB => TMDS_N(3), I => clk_s );
---	OBUFDS_grn : OBUFDS port map ( O => TMDS_P(2), OB => TMDS_N(2), I => red_s );
---	OBUFDS_red : OBUFDS port map ( O => TMDS_P(1), OB => TMDS_N(1), I => grn_s );
---	OBUFDS_blu : OBUFDS port map ( O => TMDS_P(0), OB => TMDS_N(0), I => blu_s );
---
---	s_blank <= not s_cmpblk_n_out;
---
---	inst_dcm : DCM_SP
---		generic map (
---			CLKFX_MULTIPLY => 12,
---			CLKFX_DIVIDE   => 5,
---			CLKIN_PERIOD   => 20.0
---		 )
---		port map (
---			CLKIN    => CLK_IN,
---			CLKFX    => clk_dvi_p,
---			CLKFX180 => clk_dvi_n
---		 );
---
---	DVID: entity work.dvid
---	port map(
---		clk_p     => clk_dvi_p,
---		clk_n     => clk_dvi_n, 
---		clk_pixel => clk_24M,
---		red_p(  7 downto 4) => VideoR,
---		red_p(  3 downto 0) => x"0",
---		green_p(7 downto 4) => VideoG,
---		green_p(3 downto 0) => x"0",
---		blue_p( 7 downto 4) => VideoB,
---		blue_p( 3 downto 0) => x"0",
---		blank     => s_blank,
---		hsync     => HSync,
---		vsync     => VSync,
---		-- outputs to TMDS drivers
---		red_s     => red_s,
---		green_s   => grn_s,
---		blue_s    => blu_s,
---		clock_s   => clk_s
---	);
+	s_blank <= not s_cmpblk_n_out;
+
+	DVID: entity work.dvid
+	port map(
+		clk						=> CLK_IN,
+		clk_pixel				=> clk_24M,
+		red_p(  7 downto 4)	=> VideoR,
+		red_p(  3 downto 0)	=> x"0",
+		green_p(7 downto 4)	=> VideoG,
+		green_p(3 downto 0)	=> x"0",
+		blue_p( 7 downto 4)	=> VideoB,
+		blue_p( 3 downto 0)	=> x"0",
+		blank						=> s_blank,
+		hsync						=> HSync,
+		vsync						=> VSync,
+		-- outputs to TMDS drivers
+		tmds_p					=> TMDS_P,
+		tmds_n					=> TMDS_N
+	);
 
 	----------------------
 	-- 1 bit D/A converter

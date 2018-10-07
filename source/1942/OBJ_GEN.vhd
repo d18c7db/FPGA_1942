@@ -53,7 +53,9 @@ architecture RTL of OBJ_GEN is
 		s_4H_last,
 		s_N11_2,
 		s_M5_5,
-		s_k9_11,
+		s_J9_8,
+		s_K9_8,
+		s_K9_11,
 		s_OH_last,
 		s_TR0n,
 		s_TR0n_last,
@@ -88,6 +90,7 @@ architecture RTL of OBJ_GEN is
 		M8_L8_bus,
 		M9_L9_bus,
 		Valpha_bus,
+		K7_bus,
 		Vbeta_bus,
 		LVbeta_bus,
 		L1_rom_data_bus,
@@ -140,9 +143,12 @@ begin
 	H9_H10_ram_we			<= (not I_OBJCEn) and I_SEATMn ; -- inverted because of active high Xilinx RAM WE
 	H9_H10_ram_addr_bus	<=
 		I_AB(6 downto 0) when I_SEATMn = '1' else
-		-- K9, J9, K8 gates
-		s_K9_11 & ( ( not I_H(7) ) xor ( I_V(7) and ( s_K9_11 ) ) ) & I_H(6 downto 4) & I_H(2 downto 1);
+		s_K9_11 & s_K9_8 & I_H(6 downto 4) & I_H(2 downto 1);
+
+	-- K9, J9, K8 gates
 	s_K9_11 <= I_H(8) xor ( not I_H(7) );
+	s_K9_8  <= s_J9_8 xor ( not I_H(7) );
+	s_J9_8  <= I_V(7) and s_K9_11;
 
 	-- H9, H10 RAMs
 	RAM_H9_H10 : RAMB16_S9
@@ -160,12 +166,14 @@ begin
 	);
 
 	-- H9_H10 ROM (FAKE RAM at CC00-CC7F for testing) DEBUG disable this, enable RAM
---	ROM_H9_H10 : entity work.ROM_H9_H10
---	port map (
---		CLK	=> I_CLK_12M,
---		ADDR	=> H9_H10_ram_addr_bus,
---		DATA	=> DE_bus
---	);
+--	pragma translate_off
+	ROM_H9_H10 : entity work.ROM_H9_H10
+	port map (
+		CLK	=> I_CLK_12M,
+		ADDR	=> H9_H10_ram_addr_bus,
+		DATA	=> DE_bus
+	);
+--	pragma translate_on
 
 	-- N9 decoder
 	s_TR0n <= ( I_H(3) or (     I_H(2) ) or (     I_H(1) ) );
@@ -198,15 +206,17 @@ begin
 		end if;
 	end process;
 
-	-- K7 latch
+	-- K7 latch - transparent when clock is high, latch when low
 	K7 : process
 	begin
 		wait until falling_edge(I_CLK_12M);
 		s_TR2n_last <= s_TR2n;
 		if s_TR2n = '1' and s_TR2n_last = '0' then -- inverted by K8, so rising edge!
-			Valpha_bus <= DF_bus;
+			K7_bus <= DF_bus;
 		end if;
 	end process;
+
+	Valpha_bus <= DF_bus when s_TR2n='0' else K7_bus;
 
 	-- L3 latch
 	L3 : process
@@ -288,7 +298,7 @@ begin
 		K4_bus(3 downto 2) & Vbeta_bus(5 downto 4)	when VLEN_bus = "10" else
 									Vbeta_bus(7 downto 4)	when VLEN_bus = "11" else
 		(others => '0');
-	chargen_ROM_addr_bus( 5) <= (not I_H(2) xor I_H(3));
+	chargen_ROM_addr_bus( 5) <= ((not I_H(2)) xor I_H(3));
 	chargen_ROM_addr_bus( 4 downto 1) <= Vbeta_bus(3 downto 0);
 	chargen_ROM_addr_bus( 0) <= not I_H(2);
 
@@ -331,6 +341,7 @@ begin
 		(          LVbeta_bus(5) or ( VLEN_bus(1)                     ) ) and 
 		(          LVbeta_bus(4) or ( VLEN_bus(1) or      VLEN_bus(0) ) ) and 
 		( not s_M5_5) -- FIXME whis is a hack to get sprites working, term below is as per schematic, why?!
---		( ( s_M5_5 and s_VOVER ) or ( ( not s_M5_5) and ( not s_VOVER ) ) )
+		-- FIXME not as per schematic, comparison below fails and spites don't show, find out why
+--		( ( s_M5_5 and s_VOVER ) or ( ( not s_M5_5) and ( not s_VOVER ) ) ) -- same as not (s_M5_5 xor s_VOVER)
 	);
 end RTL;

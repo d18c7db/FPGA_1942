@@ -25,12 +25,14 @@
 -- to guarantee that the testbench will bind correctly to the post-implementation 
 -- simulation model.
 --------------------------------------------------------------------------------
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
- 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
-USE ieee.numeric_std.ALL;
+library ieee;
+	use ieee.std_logic_1164.all;
+	use ieee.std_logic_arith.all;
+	use ieee.std_logic_unsigned.all;
+	use ieee.numeric_std.all;
+
+library unisim;
+	use unisim.vcomponents.all;
  
 ENTITY tb_sync IS
 END tb_sync;
@@ -47,7 +49,6 @@ ARCHITECTURE behavior OF tb_sync IS
 			O_LHBL	: OUT  std_logic;
 			O_LVBL	: OUT  std_logic;
          O_OH 		: OUT  std_logic;
-         O_3H 		: OUT  std_logic;
          O_4H 		: OUT  std_logic;
          O_6M 		: OUT  std_logic;
          O_V 		: OUT  std_logic_vector(8 downto 0);
@@ -65,25 +66,24 @@ ARCHITECTURE behavior OF tb_sync IS
 	signal O_LHBL	: std_logic;
 	signal O_LVBL	: std_logic;
 	signal O_OH		: std_logic;
-	signal O_3H		: std_logic;
 	signal O_4H		: std_logic;
 	signal O_6M		: std_logic;
 	signal O_V		: std_logic_vector(8 downto 0);
 	signal O_H		: std_logic_vector(8 downto 0);
+	signal video	: std_logic_vector(15 downto 0) := (others=>'0');
  
-   constant clock_period : time := 83.333 ns;	-- 12MHz
+   constant clock_period : time := 83 ns;	-- 12MHz
  
 BEGIN
  
 	-- Instantiate the Unit Under Test (UUT)
-	uut: SYNC PORT MAP (
+	p_sync: SYNC PORT MAP (
 		I_CLK_12M	=> I_CLK_12M,
 		O_phi_B		=> O_phi_B,
 		O_CSYNC		=> O_CSYNC,
 		O_LHBL		=> O_LHBL,
 		O_LVBL		=> O_LVBL,
 		O_OH			=> O_OH,
-		O_3H			=> O_3H,
 		O_4H			=> O_4H,
 		O_6M			=> O_6M,
 		O_V			=> O_V,

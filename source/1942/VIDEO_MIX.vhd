@@ -62,8 +62,8 @@ begin
 	-- E5, F6 F/F
 	E5_F6 : process
 	begin
-		wait until falling_edge(I_CLK_12M);
-		if I_6M = '1' then -- active high clock (same as S6M)
+		wait until rising_edge(I_CLK_12M);
+		if I_6M = '0' then -- active high clock (same as S6M)
 			char_bus <= I_CHR;
 			obj_bus	<= I_OBJ;
 		end if;
@@ -77,8 +77,8 @@ begin
 	-- J11 F/F
 	J11 : process
 	begin
-		wait until falling_edge(I_CLK_12M);
-		if I_6M = '0' then -- active high clock inverted by J7 (same as inverted S6M)
+		wait until rising_edge(I_CLK_12M);
+		if I_6M = '1' then -- active high clock inverted by J7 (same as inverted S6M)
 			s_J11_5 <= not (I_LVBL and I_LHBL);
 			s_J11_8 <= not s_J11_5;
 		end if;
@@ -101,10 +101,10 @@ begin
 	-- F8 latch
 	F8 : process
 	begin
-		wait until falling_edge(I_CLK_12M);
+		wait until rising_edge(I_CLK_12M);
 		if s_J11_8 <= '0' then
 			HC_bus <= (others => '0');
-		elsif I_6M = '1' then -- active high clock (same as S6M)
+		elsif I_6M = '0' then -- active high clock (same as S6M)
 			HC_bus <= F8_bus_in;
 		end if;
 	end process;

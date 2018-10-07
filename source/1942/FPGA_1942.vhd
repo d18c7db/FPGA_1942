@@ -282,7 +282,10 @@ entity FPGA_1942 is
 end FPGA_1942;
 
 architecture RTL of FPGA_1942 is
+	-- for correct palette selection during debugging without CPU module connected we need BRT0=0, BTR1=1, BRT2=0 
 	signal
+		s_BRT0,
+		s_BRT2,
 		s_OH,
 		s_SEATMn,
 		s_FLIP
@@ -299,9 +302,7 @@ architecture RTL of FPGA_1942 is
 		s_SH1,
 		s_S3Hn,
 		s_S7Hn,
-		s_BRT0,
 		s_BRT1,
-		s_BRT2,
 		s_ACLn,
 		s_OBJCEn,
 		s_SND_INT,
@@ -343,7 +344,6 @@ architecture RTL of FPGA_1942 is
 begin
 	O_HSYNC		<= s_LHBL;
 	O_VSYNC		<= s_LVBL;
-
 	s_ACLn		<= not I_RESET;
 
 	-- ############################

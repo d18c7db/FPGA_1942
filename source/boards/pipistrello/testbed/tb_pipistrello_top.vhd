@@ -42,11 +42,13 @@ ARCHITECTURE behavior OF tb_pipistrello_top IS
 	COMPONENT PIPISTRELLO_TOP
 	PORT(
 		I_RESET			: IN   std_logic;
-		O_VIDEO_R		: OUT  std_logic_vector(3 downto 0);
-		O_VIDEO_G		: OUT  std_logic_vector(3 downto 0);
-		O_VIDEO_B		: OUT  std_logic_vector(3 downto 0);
-		O_HSYNC			: OUT  std_logic;
-		O_VSYNC			: OUT  std_logic;
+--		O_VIDEO_R		: OUT  std_logic_vector(3 downto 0);
+--		O_VIDEO_G		: OUT  std_logic_vector(3 downto 0);
+--		O_VIDEO_B		: OUT  std_logic_vector(3 downto 0);
+--		O_HSYNC			: OUT  std_logic;
+--		O_VSYNC			: OUT  std_logic;
+		TMDS_P			: OUT  std_logic_vector(3 downto 0);
+		TMDS_N			: OUT  std_logic_vector(3 downto 0);
 		O_AUDIO_L		: OUT  std_logic;
 		O_AUDIO_R		: OUT  std_logic;
 		BUTTON0			: IN   std_logic;
@@ -63,13 +65,16 @@ ARCHITECTURE behavior OF tb_pipistrello_top IS
 	signal CLK_IN		: std_logic := '0';
 
 	--Outputs
-	signal O_VIDEO_R	: std_logic_vector(3 downto 0);
-	signal O_VIDEO_G	: std_logic_vector(3 downto 0);
-	signal O_VIDEO_B	: std_logic_vector(3 downto 0);
-	signal O_HSYNC		: std_logic;
-	signal O_VSYNC		: std_logic;
+--	signal O_VIDEO_R	: std_logic_vector(3 downto 0);
+--	signal O_VIDEO_G	: std_logic_vector(3 downto 0);
+--	signal O_VIDEO_B	: std_logic_vector(3 downto 0);
+--	signal O_HSYNC		: std_logic;
+--	signal O_VSYNC		: std_logic;
 	signal O_AUDIO_L	: std_logic;
 	signal O_AUDIO_R	: std_logic;
+	
+	signal TMDS_P		: std_logic_vector(3 downto 0);
+	signal TMDS_N		: std_logic_vector(3 downto 0);
 
 	-- Clock period definitions
 	constant clock_period : time := 20 ns;
@@ -78,11 +83,13 @@ begin
 	-- Instantiate the Unit Under Test (UUT)
 	uut: PIPISTRELLO_TOP port map (
 		I_RESET		=> I_RESET,
-		O_VIDEO_R	=> O_VIDEO_R,
-		O_VIDEO_G	=> O_VIDEO_G,
-		O_VIDEO_B	=> O_VIDEO_B,
-		O_HSYNC		=> O_HSYNC,
-		O_VSYNC		=> O_VSYNC,
+--		O_VIDEO_R	=> O_VIDEO_R,
+--		O_VIDEO_G	=> O_VIDEO_G,
+--		O_VIDEO_B	=> O_VIDEO_B,
+--		O_HSYNC		=> O_HSYNC,
+--		O_VSYNC		=> O_VSYNC,
+		TMDS_P		=> TMDS_P,
+		TMDS_N		=> TMDS_N,
 		O_AUDIO_L	=> O_AUDIO_L,
 		O_AUDIO_R	=> O_AUDIO_R,
 		BUTTON0		=> BUTTON0,
@@ -110,14 +117,14 @@ begin
 		I_RESET <= '0';
 
 		-- insert stimulus here 
-		wait for 120ms;	
+		wait for 120 ms;	
 		BUTTON0 <= '0'; -- COIN
-		wait for 10ms;	
+		wait for 10 ms;	
 		BUTTON0 <= '1';
 
-		wait for 10ms;	
+		wait for 10 ms;	
 		BUTTON1 <= '0'; -- P1 START
-		wait for 10ms;	
+		wait for 10 ms;	
 		BUTTON1 <= '1';
 
 		wait;

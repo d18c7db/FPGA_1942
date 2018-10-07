@@ -223,8 +223,6 @@ begin
 	adder_bus_a <= C11_bus;
 	adder_bus_b <= ( not I_H(8) ) & ( H_flip_bus(7) xor ( (not I_H(8)) and ( (not I_FLIPOB1) xor (H_flip_bus(6) ) ) ) ) & H_flip_bus(6 downto 0);
 
---	SCRCE --________-
---	S3H   -____------
 	B10_C10_D11 : process
 	begin
 		wait until falling_edge(I_CLK_12M);
@@ -349,12 +347,14 @@ begin
 	);
 
 	-- A9 (FAKE RAM at D800-DBFF for testing) DEBUG disable this, enable RAM
---	ROM_A9 : entity work.ROM_A9
---	port map (
---		CLK	=> I_CLK_12M,
---		ADDR	=> A9_ram_addr_bus,
---		DATA	=> A9_ram_data_bus
---	);
+-- pragma translate_off
+	ROM_A9 : entity work.ROM_A9
+	port map (
+		CLK	=> I_CLK_12M,
+		ADDR	=> A9_ram_addr_bus,
+		DATA	=> A9_ram_data_bus
+	);
+-- pragma translate_on
 
 	-- A10, A11, B11 multiplexers, SEL 0=A 1=B
 	s_A9_WE				<= not ( s_A9_WEn or I_6M or I_H(0) );

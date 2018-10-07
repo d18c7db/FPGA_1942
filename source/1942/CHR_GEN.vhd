@@ -182,12 +182,14 @@ begin
 	);
 
 	-- D2 ROM (FAKE RAM at D000-D7FF for testing) DEBUG disable this, enable RAM
---	ROM_D2 : entity work.ROM_D2
---	port map (
---		CLK	=> I_CLK_12M,
---		ADDR	=> D2_addr_bus, -- A10..A0
---		DATA	=> D2_data_bus_out
---	);
+-- pragma translate_off
+	ROM_D2 : entity work.ROM_D2
+	port map (
+		CLK	=> I_CLK_12M,
+		ADDR	=> D2_addr_bus, -- A10..A0
+		DATA	=> D2_data_bus_out
+	);
+-- pragma translate_on
 
 	s_D2_we		<= not s_E6_5; -- Xilinx RAM needs active high WE
 
