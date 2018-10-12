@@ -32,9 +32,11 @@ use ieee.numeric_std.all;
 
 entity gamecube is
 	port (
-		clk					: in std_logic;	-- 1MHz clock
+		clk					: in std_logic;	-- 4MHz clock
 		reset					: in std_logic;
 		serio					: inout std_logic;
+
+		ready					: out std_logic;	-- button Start
 
 		but_S					: out std_logic;	-- button Start
 		but_X					: out std_logic;	-- button X
@@ -62,23 +64,23 @@ end gamecube;
 
 architecture behavioral of gamecube is
 	type machine is (
-		send_lo_0, send_lo_1, send_lo_2, send_lo_3,
-		send_hi_0, send_hi_1, send_hi_2, send_hi_3,
-		recv_b0_0, recv_b0_1, recv_b0_2, recv_b0_3,
-		init, cmd0
+		init, idle, cmd0, cmd1, resp_wait, recv_bytes, store_bytes
 	);
+	constant GC_POLL		: std_logic_vector(23 downto 0) := x"400302";
 	signal state			: machine;
-	signal last_bit		: std_logic := '0';
-	signal command			: std_logic_vector(23 downto 0) := x"400302";	--	3 byte command
+	signal rxshift			: std_logic_vector(15 downto 0) := (others=>'0');
+	signal txshift			: std_logic_vector(15 downto 0) := (others=>'0');
 	signal rx				: std_logic_vector( 7 downto 0) := (others=>'0');
 	signal rx_bit			: integer range 0 to 15 := 0;
 	signal rx_byte			: integer range 0 to 15 := 0;
 	signal counter			: integer range 0 to 63 := 0;
+	signal txcount			: integer range 0 to 15 := 0;
 begin
 	process(clk, reset)
 	begin
 		if (reset = '1') then
 			counter	<= 0;
+			ready		<= '0';
 			state		<= init;
 			serio		<= 'Z';
 
@@ -105,120 +107,195 @@ begin
 			ana_R		<= (others=>'0');
 
 		elsif (rising_edge(clk)) then
+			-- shift in I/O
+			rxshift <= rxshift(14 downto 0) & serio;
+
 			case state is
 				-------------------------------
 				-- state machine initial state
 				-------------------------------
 				when init =>
-					counter	<= 0;
-					rx_bit	<= 0;
-					rx_byte	<= 0;
-					command	<= x"400302";
-					serio		<= 'Z';
-					state		<= cmd0;
+					serio			<= 'Z';
+					counter		<= 31;	-- timeout value
+					rx_bit		<= 7;
+					rx_byte		<= 8;
+					ready			<= '1';
+					state			<= idle;
 
-				----------------
-				-- send command
-				----------------
-				when cmd0 =>
-					serio		<= '1';
-					command	<= command(22 downto 0) & '1';
-					counter	<= counter + 1;
-					if counter = 25 then
-						serio		<= 'Z';
-						counter	<= 0;
-						state		<= recv_b0_0;
+				-------------------------------
+				-- check that no other device is driving the I/O line by
+				-- waiting for the line to be idle (high) for 32 clocks
+				-------------------------------
+				when idle =>
+					if serio = '0' then
+						-- restart timeout counter if I/O line is active
+						counter <= 31;
 					else
-						if command(23) = '1' then
-							state <= send_hi_0;
-						else
-							state <= send_lo_0;
+						-- else count down
+						counter <= counter - 1;
+
+						-- on time out, move to next state
+						if counter = 0 then
+							counter	<= 23;	-- number of command bits-1 to send
+							txcount	<= 15;	-- number of clocks-1 per bit to transmit
+							state		<= cmd0;
 						end if;
 					end if;
 
-				---------------------------
-				-- send a high bit as _---
-				---------------------------
-				when send_hi_0 => serio <= '0';	state <= send_hi_1;
-				when send_hi_1 =>	serio <= '1';	state <= send_hi_2;
-				when send_hi_2 =>	serio <= '1';	state <= cmd0;
-
-				--------------------------
-				-- send a low bit as ___-
-				--------------------------
-				when send_lo_0 =>	serio <= '0';	state <= send_lo_1;
-				when send_lo_1 =>	serio <= '0';	state <= send_lo_2;
-				when send_lo_2 =>	serio <= '0';	state <= cmd0;
-
-				------------------
-				-- receive a byte
-				------------------
-
-				-- 1st quarter of bit must be 0
-				when recv_b0_0 =>
-					counter <= counter + 1;	-- timeout counter
-					if serio = '0' then
-						counter <= 0;
-						state <= recv_b0_1;
-					elsif counter = 63 then	-- if no bit received, restart state machine
-						state <= init;
-					elsif rx_byte = 8 then
-						state	<= init;
-					elsif rx_bit = 8 then
-						rx_bit	<= 0;
-						rx_byte	<= rx_byte + 1;
-						rx			<= (others=>'0');
-						case rx_byte is
-							when 0 =>
-								but_S		<= rx(4);
-								but_Y		<= rx(3);
-								but_X		<= rx(2);
-								but_B		<= rx(1);
-								but_A		<= rx(0);
-							when 1 =>
-								but_L		<= rx(6);
-								but_R		<= rx(5);
-								but_Z		<= rx(4);
-								but_DU	<= rx(3);
-								but_DD	<= rx(2);
-								but_DR	<= rx(1);
-								but_DL	<= rx(0);
-							when 2 =>
-								joy_X		<= rx;
-							when 3 =>
-								joy_Y		<= rx;
-							when 4 =>
-								cst_X		<= rx;
-							when 5 =>
-								cst_Y		<= rx;
-							when 6 =>
-								ana_L		<= rx;
-							when 7 =>
-								ana_R		<= rx;
-							when others => null;
-						end case;
-					end if;
-
-				-- 2nd quarter of bit is the value
-				when recv_b0_1 =>
-					last_bit	<= serio;
-					state	<= recv_b0_2;
-				-- 3rd quarter of bit must be same as 2nd
-				when recv_b0_2 =>
-					if last_bit = serio then
-						state	<= recv_b0_3;
+				-------------------------------
+				-- send command
+				-------------------------------
+				when cmd0 =>
+					if txcount = 0 then
+						txcount <= 15;	-- number of clocks per bit to transmit
+						if counter = 0 then
+							-- after we've sent 24 bits we're done
+							state <= cmd1;
+						else
+							-- count down bits sent
+							counter <= counter - 1;
+						end if;
 					else
-						state	<= init;
+						txcount <= txcount - 1;
 					end if;
-				-- 4th quarter of bit must be 1
-				when recv_b0_3 =>
-					if serio = '1' then
-						rx			<= rx(6 downto 0) & last_bit;
-						rx_bit	<= rx_bit + 1;
-						state		<= recv_b0_0;
+
+					serio <= txshift(txcount);
+					if GC_POLL(counter) = '1' then
+						--	'1' is 1us low followed by 3 us high
+						txshift <= x"0FFF";
 					else
-						state <= init;
+						-- '0' is 3us low followed by 1 us high
+						txshift <= x"000F";
 					end if;
+
+				-------------------------------
+				-- after every command we must send a '1'
+				-------------------------------
+				when cmd1 =>
+					txshift <= x"0FFF";
+					serio <= txshift(txcount);
+					if txcount = 0 then
+						state		<= resp_wait;
+						-- restart timeout counter
+						counter <= 63;
+					else
+						txcount	<= txcount - 1;
+					end if;
+
+				-------------------------------
+				-- wait for a hi to low transition
+				-------------------------------
+				when resp_wait =>
+					-- stop driving I/O line
+					serio		<= 'Z';
+					if counter = 0 then
+						-- if timed out and no bit received
+						-- abort and restart state machine
+						state <= init;
+					else
+						-- timeout count down
+						counter <= counter - 1;
+
+						-- if hi to lo transition
+						if (rxshift(0) = '1' and serio = '0') then
+							-- indicate not ready state
+							ready		<= '0';
+							-- restart timeout counter
+							counter <= 20;
+							-- move to state for receiving bytes
+							state <= recv_bytes;
+						end if;
+					end if;
+
+				when recv_bytes =>
+
+					if counter = 0 then
+						-- if timed out and no transition received
+						-- abort and restart state machine
+						state <= init;
+					else
+						-- timeout count down
+						counter <= counter - 1;
+
+						-- if hi to lo transition
+						if (rxshift(0) = '1' and serio = '0') then
+							-- restart timeout counter
+							counter <= 20;
+
+							if rx_bit = 0 then
+								-- every 8 bits received, assign the byte to the correct register
+								state <= store_bytes;
+								rx_bit	<= 7;
+
+								if rx_byte = 0 then
+									state	<= init;
+								else
+									rx_byte	<= rx_byte - 1;
+								end if;
+							else
+								rx_bit	<= rx_bit - 1;
+							end if;
+
+							--	here we detect patterns for '1' and '0' but we also make allowance
+							--	for speed of transmitter not exactly matching ours. Since we run off
+							--	a 4MHz clock we can have a theoretical maximum deviation of one clock
+							--	cycle (+/- 250ns) of the input signal before we lose sync, so while
+							--	the ideal input signal has a 4us cycle we can deal with input signals
+							--	cycles anywhere from 3.75us to 4.25us (verified in simulation)
+
+							-- likely pattern is a '1'
+							if    rxshift(7 downto 0) = x"FF" then
+								rx <= rx(6 downto 0) & '1';
+							-- likely pattern for a '0'
+							elsif
+								-- longer 0001 1111 0
+								(rxshift(7 downto 0) = x"1F" ) or
+								-- exact 0000 1111 0
+								(rxshift(7 downto 0) = x"0F" ) or
+								-- shorter 0000 0111 0
+								(rxshift(7 downto 0) = x"07" ) then
+								rx <= rx(6 downto 0) & '0';
+							else
+								-- invalid pattern, assume corrupt stream and restart state maching
+								state <= init;
+							end if;
+						end if;
+					end if;
+
+				when store_bytes =>
+					state <= recv_bytes;
+
+					case rx_byte is
+						when 7 =>
+							but_S		<= rx(4);
+							but_Y		<= rx(3);
+							but_X		<= rx(2);
+							but_B		<= rx(1);
+							but_A		<= rx(0);
+					ana_L		<= rx;
+						when 6 =>
+							but_L		<= rx(6);
+							but_R		<= rx(5);
+							but_Z		<= rx(4);
+							but_DU	<= rx(3);
+							but_DD	<= rx(2);
+							but_DR	<= rx(1);
+							but_DL	<= rx(0);
+					ana_R		<= rx;
+						when 5 =>
+							joy_X		<= rx;
+						when 4 =>
+							joy_Y		<= rx;
+						when 3 =>
+							cst_X		<= rx;
+						when 2 =>
+							cst_Y		<= rx;
+						when 1 =>
+							ana_L		<= rx;
+						when 0 =>
+							ana_R		<= rx;
+						when others => null;
+					end case;
 
 				when others =>
 					state <= init;

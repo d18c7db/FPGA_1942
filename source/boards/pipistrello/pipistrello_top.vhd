@@ -46,11 +46,13 @@ entity PIPISTRELLO_TOP is
 		O_AUDIO_L,
 		O_AUDIO_R			: out   std_logic;
 
-		-- Active high external buttons
+		-- PS2 keyboard
 --		PS2CLK1,
 --		PS2DAT1				: inout std_logic;
-		BUTTON0				: in    std_logic := '1';
-		BUTTON1				: in    std_logic := '1';
+
+		-- gamecube controller I/O line
+		PMOD1_IO4			: inout std_logic;
+
 		-- 50MHz clock
 		CLK_IN				: in    std_logic := '0'						-- System clock 50Mhz
 
@@ -77,10 +79,20 @@ architecture RTL of PIPISTRELLO_TOP is
 
 	-- player buttons
 		p_coin, p1_start, p1_loop, p1_fire, p1_down, p1_up, p1_left, p1_right,
-		p_srvc, p2_start, p2_loop, p2_fire, p2_down, p2_up, p2_left, p2_right
-								: std_logic := '1';
+		p_srvc, p2_start, p2_loop, p2_fire, p2_down, p2_up, p2_left, p2_right,
 
-	signal
+		ready,
+
+		but_S,
+		but_X,
+		but_Y,
+		but_Z,
+
+		but_A,
+		but_B,
+		but_L,
+		but_R,
+
 		s_cmpblk_n,
 		s_cmpblk_n_out,
 		s_dac_out_l,
@@ -92,7 +104,6 @@ architecture RTL of PIPISTRELLO_TOP is
 		HSync,
 		VSync
 								: std_logic := '1';
-
 	-- video
 	signal
 		s_red,
@@ -106,20 +117,15 @@ architecture RTL of PIPISTRELLO_TOP is
 								: std_logic_vector(3 downto 0);
 
 	signal
+		joy_X,
+		joy_Y,
+
 		s_audio_l,
 		s_audio_r
 								: std_logic_vector( 7 downto 0) := (others => '0');
-
 	signal
 		ps2_scancode
 								: std_logic_vector( 9 downto 0) := (others => '0');
-
-	-- nunchack
---	signal but_c			: std_logic;		-- button C pos
---	signal but_z			: std_logic;		-- button Z pos
---	signal joy_x			: std_logic_vector( 7 downto 0);
---	signal joy_y			: std_logic_vector( 7 downto 0);
-
 begin
 	-----------------------------------------------
 	-- DCM generates all the system clocks required
@@ -208,17 +214,6 @@ begin
 --				p2_up    <= '0';
 --				p2_left  <= '0';
 --				p2_right <= '0';
--- nunchack input section
---		else
---			p1_start	<= but_z;
---			p1_coin	<= but_c and but_z;
---			p1_loop	<= but_c;
---			p1_fire  <= '0'; -- to be assigned
---			if joy_x > x"a0" then p1_right	<= '1';	else p1_right	<= '0'; end if;
---			if joy_x < x"60" then p1_left		<= '1';	else p1_left	<= '0'; end if;
---			if joy_y > x"a0" then p1_up		<= '1';	else p1_up		<= '0'; end if;
---			if joy_y < x"60" then p1_down		<= '1';	else p1_down	<= '0'; end if;
---		end if;
 -- keyboard input section
 --			elsif (ps2_codeready = '1') then
 --				case (ps2_scancode(7 downto 0)) is
@@ -252,6 +247,81 @@ begin
 --		end if;
 --	end process;
 
+	-- Generic GameCube controller
+	p_gc: entity work.gamecube
+	port map(
+		clk			=> clk_4M_en,	-- 4MHz clock
+		reset			=> ext_reset,
+		ready			=> ready,		-- buttons are stable when set
+		serio			=> PMOD1_IO4,
+
+		but_S			=> but_S,	-- button Start
+		but_X			=> but_X,	-- button X
+		but_Y			=> but_Y,	-- button Y
+		but_Z			=> but_Z,	-- button Z
+                     
+		but_A			=> but_A,	-- button A
+		but_B			=> but_B,	-- button B
+		but_L			=> but_L,	-- button Left
+		but_R			=> but_R,	-- button Right
+                     
+		but_DU		=> open,		-- button Dpad up
+		but_DD		=> open,		-- button Dpad down
+		but_DL		=> open,		-- button Dpad left
+		but_DR		=> open,		-- button Dpad right
+
+		joy_X			=> joy_X,	-- Joy X analog
+		joy_Y			=> joy_Y,	-- Joy Y analog
+		cst_X			=> open,		-- C-Stick X analog
+		cst_Y			=> open,		-- C-Stick Y analog
+		ana_L			=> open,		-- Left Button analog
+		ana_R			=> open		-- Right Button analog
+	);
+
+	process
+	begin
+		wait until rising_edge(clk_12M);
+		if ready = '1' then
+			p_coin	<= not but_Z;
+			p1_start	<= not but_S;
+			p1_loop	<= not but_B;
+			p1_fire	<= not but_A;
+
+			if joy_Y > x"A0" then
+				p1_up		<= '0';
+			else
+				p1_up		<= '1';
+			end if;
+
+			if joy_Y < x"60" then
+				p1_down	<= '0';
+			else
+				p1_down	<= '1';
+			end if;
+
+			if joy_X > x"A0" then
+				p1_right	<= '0';
+			else
+				p1_right	<= '1';
+			end if;
+
+			if joy_X < x"60" then
+				p1_left	<= '0';
+			else
+				p1_left	<= '1';
+			end if;
+
+--			p_srvc	<= not;
+--			p2_start	<= not;
+--			p2_loop	<= not;
+--			p2_fire	<= not;
+--			p2_up		<= not;
+--			p2_down	<= not;
+--			p2_left	<= not;
+--			p2_right	<= not;
+		end if;
+	end process;
+
 	inst_1942 : entity work.FPGA_1942
 	port map(
 		-- System Clock
@@ -261,11 +331,8 @@ begin
 		I_RESET		=> ext_reset,
 
 		-- player 1 controls, active low
-		I_P1(7)		=> BUTTON0,					-- coin
-		I_P1(6)		=> BUTTON1, 				-- P1 start
-
---		I_P1(7)		=> p_coin,					-- coin
---		I_P1(6)		=> p1_start, 				-- P1 start
+		I_P1(7)		=> p_coin,					-- coin
+		I_P1(6)		=> p1_start, 				-- P1 start
 		I_P1(5)		=> p1_loop, 				-- P1 loop
 		I_P1(4)		=> p1_fire, 				-- P1 fire
 		I_P1(3)		=> p1_up,					-- P1 up
@@ -327,16 +394,16 @@ begin
 		-- parameters below affect output video timing
 		-- these must add up to 384 (including hpad*2)
 		hF				=>   8,	-- h front porch
-		hS				=>  45,	-- h sync
-		hB				=>  23,	-- h back porch
-		hV				=> 260,	-- visible video
-		hpad			=>  24,	-- create H black border
+		hS				=>  46,	-- h sync
+		hB				=>  22,	-- h back porch
+		hV				=> 288,	-- active video
+		hpad			=>  10,	-- create H black border
 
 		-- these should add up to 262 (including vpad*2)
-		vF				=>   2,	-- v front porch
-		vS				=>   2,	-- v sync
-		vB				=>  32,	-- v back porch
-		vV				=> 226,	-- visible video
+		vF				=>   1,	-- v front porch
+		vS				=>   1,	-- v sync
+		vB				=>  36,	-- v back porch
+		vV				=> 224,	-- active video
 		vpad			=>   0	-- create V black border
 	)
 	port map (

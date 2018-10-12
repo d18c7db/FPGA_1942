@@ -20,14 +20,14 @@
 -- __________________|  |________________________________|  |__________________________
 -- HSYNC             |__|              HSYNC             |__|              HSYNC
 
----------------------------------------------------------------------------------------------------------------
---	HORIZONTAL   - Frame   | Pixel      | Front     | HSYNC      | Back       | Active     | HSYNC    | Total  |
--- Resolution   - Rate    | Clock      | Porch hF  | Pulse hS   | Porch hB   | Video hV   | Polarity | Pixels |
----------------------------------------------------------------------------------------------------------------
---  In  256x224 - 59.18Hz |  6.000 MHz | 38 pixels |  32 pixels |  58 pixels | 256 pixels | negative | 384    |
---  Out 640x480 - 59.18Hz | 24.000 MHz |  2 pixels |  92 pixels |  34 pixels | 640 pixels | negative | 768    |
---  VGA 640x480 - 59.94Hz | 25.175 MHz | 16 pixels |  96 pixels |  48 pixels | 640 pixels | negative | 800    |
----------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
+-- HORIZONTAL   - Line       | Pixel      | Front     | HSYNC      | Back       | Active     | HSYNC    | Total  |
+-- Resolution   - Rate       | Clock      | Porch hF  | Pulse hS   | Porch hB   | Video hV   | Polarity | Pixels |
+------------------------------------------------------------------------------------------------------------------
+--  In  256x224 - 15625.00Hz |  6.000 MHz | 38 pixels |  32 pixels |  58 pixels | 256 pixels | negative | 384    |
+--  Out 640x480 - 31250.00Hz | 24.000 MHz |  2 pixels |  92 pixels |  34 pixels | 640 pixels | negative | 768    |
+--  VGA 640x480 - 31468.75Hz | 25.175 MHz | 16 pixels |  96 pixels |  48 pixels | 640 pixels | negative | 800    |
+------------------------------------------------------------------------------------------------------------------
 
 -- Vertical Timing
 -- _____________              ______________________              _____________________
@@ -36,14 +36,14 @@
 -- __________________|  |________________________________|  |__________________________
 -- VSYNC             |__|              VSYNC             |__|              VSYNC
 
----------------------------------------------------------------------------------------------------------------
---	VERTICAL     - Frame   | Pixel      | Front     | VSYNC      | Back       | Active     | VSYNC    | Total  |
--- Resolution   - Rate    | Clock      | Porch vF  | Pulse vS   | Porch vB   | Video vV   | Polarity | Pixels |
----------------------------------------------------------------------------------------------------------------
---  In  256x224 - 59.18Hz |  6.000 MHz | 16 lines  | 8 lines    | 16 lines   | 224 lines  | negative | 264    |
---  Out 640x480 - 59.18Hz | 24.000 MHz | 17 lines  | 2 lines    | 29 lines   | 480 lines  | negative | 528    |
---  VGA 640x480 - 59.94Hz | 25.175 MHz | 10 lines  | 2 lines    | 33 lines   | 480 lines  | negative | 525    |
----------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
+-- VERTICAL     - Frame      | Pixel      | Front     | VSYNC      | Back       | Active     | VSYNC    | Total  |
+-- Resolution   - Rate       | Clock      | Porch vF  | Pulse vS   | Porch vB   | Video vV   | Polarity | Pixels |
+------------------------------------------------------------------------------------------------------------------
+--  In  256x224 - 59.18Hz    |  6.000 MHz | 16 lines  | 8 lines    | 16 lines   | 224 lines  | negative | 264    |
+--  Out 640x480 - 59.18Hz    | 24.000 MHz | 17 lines  | 2 lines    | 29 lines   | 480 lines  | negative | 528    |
+--  VGA 640x480 - 59.94Hz    | 25.175 MHz | 10 lines  | 2 lines    | 33 lines   | 480 lines  | negative | 525    |
+------------------------------------------------------------------------------------------------------------------
 
 library ieee;
 	use ieee.std_logic_1164.all;
@@ -61,7 +61,7 @@ library UNISIM;
 entity VGA_SCANCONV is
 	generic (
 		vstart		: integer range 0 to 1023 := 127;	-- start  of active video
-		vlength		: integer range 0 to 1023 := 127;	-- length of active video
+		vlength		: integer range 0 to 1023 := 256;	-- length of active video
 
 		hF				: integer range 0 to 1023 :=   8;	-- h front porch
 		hS				: integer range 0 to 1023 :=  45;	-- h sync
